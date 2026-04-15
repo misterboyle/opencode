@@ -22,6 +22,7 @@ const PROVIDER_PRIORITY: Record<string, number> = {
   "github-copilot": 3,
   anthropic: 4,
   google: 5,
+  cogitor: 6,
 }
 
 export function createDialogProviderOptions() {
@@ -46,6 +47,7 @@ export function createDialogProviderOptions() {
             anthropic: "(API key)",
             openai: "(ChatGPT Plus/Pro or API key)",
             "opencode-go": "Low cost subscription for everyone",
+            cogitor: "Local Cogitor agent server",
           }[provider.id],
           footer: consoleManaged ? sync.data.console_state.activeOrgName : undefined,
           category: provider.id in PROVIDER_PRIORITY ? "Popular" : "Other",
