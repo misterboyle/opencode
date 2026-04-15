@@ -22,7 +22,6 @@ export const ProviderID = providerIdSchema.pipe(
     openrouter: schema.make("openrouter"),
     mistral: schema.make("mistral"),
     gitlab: schema.make("gitlab"),
-    cogitor: schema.make("cogitor"),
   })),
 )
 
