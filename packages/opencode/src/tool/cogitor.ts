@@ -22,7 +22,7 @@ export const BdTool = Tool.define(
         "Use --json flag to get structured JSON output.\n" +
         "Examples: ['list', '--json'], ['show', 'cogitor-e8e', '--json'], ['create', '--json']",
       parameters: BdParameters,
-      execute: (params, ctx) =>
+      execute: (params: z.infer<typeof BdParameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
           const cmd = ["bd", ...params.args]
           const opts = { cwd: params.workdir || (ctx.extra?.worktree as string) || (ctx.extra?.directory as string) || ".", timeout: 30000 }
@@ -48,8 +48,6 @@ export const BdTool = Tool.define(
   }),
 )
 
-// kb_query tool -- Search the knowledge base
-
 const KbQueryParameters = z.object({
   query: z.string().describe("Search query for the knowledge base"),
   limit: z
@@ -70,7 +68,7 @@ export const KbQueryTool = Tool.define(
         "The KB contains project documentation, best practices, and procedural guides.\n" +
         "Use this before performing tasks to find existing guidance.",
       parameters: KbQueryParameters,
-      execute: (params, ctx) =>
+      execute: (params: z.infer<typeof KbQueryParameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
           const workdir = (ctx.extra?.worktree as string) || (ctx.extra?.directory as string) || "."
           try {
@@ -83,7 +81,7 @@ export const KbQueryTool = Tool.define(
             return {
               title: `KB search: ${params.query}`,
               output: stdout || "(no results found)",
-              metadata: { query: params.query, results: (stdout.match(/\d+/g) || []).pop() ?? "0" },
+              metadata: { query: params.query, results: Number((stdout.match(/\d+/g) || []).pop() ?? "0") },
             }
           } catch {
             try {
@@ -102,13 +100,13 @@ export const KbQueryTool = Tool.define(
                 output: files.length > 0
                   ? files.map((f) => `- ${f}`).join("\n")
                   : `(no results found for: ${params.query})`,
-                metadata: { query: params.query, results: String(files.length) },
+                metadata: { query: params.query, results: files.length },
               }
             } catch {
               return {
                 title: `KB search: ${params.query}`,
                 output: `(KB not available: unable to search knowledge base)`,
-                metadata: { query: params.query, results: "0" },
+                metadata: { query: params.query, results: 0 },
               }
             }
           }
@@ -116,8 +114,6 @@ export const KbQueryTool = Tool.define(
     }
   }),
 )
-
-// spawn_agent tool -- Spawn a cogitor agent
 
 const SpawnAgentParameters = z.object({
   persona: z.string().describe("Persona to use (e.g., architect, coder, tdd-guide, reviewer)"),
@@ -132,7 +128,7 @@ const SpawnAgentParameters = z.object({
     .optional(),
 })
 
-type SpawnAgentMetadata = { persona: string; agent_name?: string; worktree?: string }
+type SpawnAgentMetadata = { persona: string; agent_name: string; worktree: string }
 
 export const SpawnAgentTool = Tool.define(
   "cogitor_spawn_agent",
@@ -144,7 +140,7 @@ export const SpawnAgentTool = Tool.define(
         "Available personas: architect, coder, tdd-guide, reviewer, security-auditor, docs-writer, perf-tuner, devops, release-manager, cos (chief-of-staff)\n" +
         "Use this to dispatch parallel work to specialized agents.",
       parameters: SpawnAgentParameters,
-      execute: (params, ctx) =>
+      execute: (params: z.infer<typeof SpawnAgentParameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
           const workdir = params.workdir || (ctx.extra?.worktree as string) || (ctx.extra?.directory as string) || "."
           const agentName = params.persona.replace(/[^a-zA-Z0-9_-]/g, "_")
@@ -162,14 +158,14 @@ export const SpawnAgentTool = Tool.define(
             return {
               title: `Spawned ${params.persona} agent`,
               output: stdout || stderr || `Agent ${params.persona} spawned successfully`,
-              metadata: { persona: params.persona, agent_name: agentName, worktree: params.workdir },
+              metadata: { persona: params.persona, agent_name: agentName, worktree: params.workdir ?? "" },
             }
           } catch (e) {
             const err = e as { stdout?: string; stderr?: string; code?: number }
             return {
               title: `Spawn ${params.persona} failed`,
               output: err.stderr || err.stdout || String(e),
-              metadata: { persona: params.persona, agent_name: agentName },
+              metadata: { persona: params.persona, agent_name: agentName, worktree: "" },
             }
           }
         }),
@@ -177,21 +173,13 @@ export const SpawnAgentTool = Tool.define(
   }),
 )
 
-// report_status tool -- Report agent status / heartbeat
-
 const ReportStatusParameters = z.object({
   summary: z.string().describe("Brief summary of what was accomplished in this iteration").optional(),
-  errors: z
-    .record(z.union([z.string(), z.number(), z.null()]))
-    .describe("Structured error information (optional)")
-    .optional(),
-  persona: z
-    .string()
-    .describe("Persona name for the heartbeat (optional, defaults to agent persona)")
-    .optional(),
+  errors: z.record(z.string(), z.unknown()).describe("Structured error information (optional)").optional(),
+  persona: z.string().describe("Persona name for the heartbeat (optional, defaults to agent persona)").optional(),
 })
 
-type ReportStatusMetadata = { summary: string; iterations?: number }
+type ReportStatusMetadata = { summary: string; iterations: number }
 
 export const ReportStatusTool = Tool.define(
   "cogitor_report_status",
@@ -202,7 +190,7 @@ export const ReportStatusTool = Tool.define(
         "This updates the agent's heartbeat so the orchestrator knows the agent is alive and making progress.\n" +
         "Use this at the end of each iteration to report what was accomplished.",
       parameters: ReportStatusParameters,
-      execute: (params, ctx) =>
+      execute: (params: z.infer<typeof ReportStatusParameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
           const workdir = (ctx.extra?.worktree as string) || (ctx.extra?.directory as string) || "."
           const heartbeatFile = ".cogitor.heartbeat"
@@ -221,21 +209,21 @@ export const ReportStatusTool = Tool.define(
             errors: params.errors || null,
           })
 
+          const fs = yield* Effect.promise(() => import("node:fs/promises"))
           try {
-            const fs = yield* Effect.promise(() => import("node:fs/promises"))
-            await fs.mkdir(workdir, { recursive: true })
-            await fs.writeFile(heartbeatPath, heartbeatData)
+            yield* Effect.promise(() => fs.mkdir(workdir, { recursive: true }))
+            yield* Effect.promise(() => fs.writeFile(heartbeatPath, heartbeatData))
 
             return {
               title: `Status reported (iter ${iter})`,
               output: `Heartbeat written to ${heartbeatPath}\n${heartbeatData}`,
-              metadata: { summary: params.summary || "", iterations: iter },
+              metadata: { summary: params.summary ?? "", iterations: iter },
             }
           } catch (e) {
             return {
               title: `Status report failed`,
               output: `Failed to write heartbeat: ${e}`,
-              metadata: { summary: params.summary || "" },
+              metadata: { summary: params.summary ?? "", iterations: iter },
             }
           }
         }),
