@@ -12,6 +12,7 @@ import { WebFetchTool } from "./webfetch"
 import { WriteTool } from "./write"
 import { InvalidTool } from "./invalid"
 import { SkillTool } from "./skill"
+import { BdTool, KbQueryTool, SpawnAgentTool, ReportStatusTool } from "./cogitor"
 import * as Tool from "./tool"
 import { Config } from "../config"
 import { type ToolContext as PluginToolContext, type ToolDefinition } from "@opencode-ai/plugin"
@@ -113,6 +114,10 @@ export const layer: Layer.Layer<
     const greptool = yield* GrepTool
     const patchtool = yield* ApplyPatchTool
     const skilltool = yield* SkillTool
+    const cogitorBd = yield* BdTool
+    const cogitorKbQuery = yield* KbQueryTool
+    const cogitorSpawnAgent = yield* SpawnAgentTool
+    const cogitorReportStatus = yield* ReportStatusTool
     const agent = yield* Agent.Service
 
     const state = yield* InstanceState.make<State>(
@@ -194,6 +199,10 @@ export const layer: Layer.Layer<
           question: Tool.init(question),
           lsp: Tool.init(lsptool),
           plan: Tool.init(plan),
+          cogitor_bd: Tool.init(cogitorBd),
+          cogitor_kb_query: Tool.init(cogitorKbQuery),
+          cogitor_spawn_agent: Tool.init(cogitorSpawnAgent),
+          cogitor_report_status: Tool.init(cogitorReportStatus),
         })
 
         return {
@@ -216,6 +225,10 @@ export const layer: Layer.Layer<
             tool.patch,
             ...(Flag.OPENCODE_EXPERIMENTAL_LSP_TOOL ? [tool.lsp] : []),
             ...(Flag.OPENCODE_EXPERIMENTAL_PLAN_MODE && Flag.OPENCODE_CLIENT === "cli" ? [tool.plan] : []),
+            cogitorBd,
+            cogitorKbQuery,
+            cogitorSpawnAgent,
+            cogitorReportStatus,
           ],
           task: tool.task,
           read: tool.read,

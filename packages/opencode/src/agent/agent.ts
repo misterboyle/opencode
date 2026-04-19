@@ -13,6 +13,7 @@ import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
+import PROMPT_COGITOR_COS from "./prompt/cogitor-cos.txt"
 import { Permission } from "@/permission"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Global } from "@/global"
@@ -230,6 +231,24 @@ export const layer = Layer.effect(
               user,
             ),
             prompt: PROMPT_SUMMARY,
+          },
+          "cogitor-cos": {
+            name: "cogitor-cos",
+            description: "Cogitor Chief-of-Staff orchestrator. Dispatches specialized agents, tracks beads, and manages swarm progress.",
+            prompt: PROMPT_COGITOR_COS,
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({
+                "cogitor_bd": "allow",
+                "cogitor_kb_query": "allow",
+                "cogitor_spawn_agent": "allow",
+                "cogitor_report_status": "allow",
+              }),
+              user,
+            ),
+            mode: "primary",
+            native: true,
+            options: {},
           },
         }
 
